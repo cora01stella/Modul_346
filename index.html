@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Webseite mit Games</title>
+<style>
+    .button {
+        display:grid;
+        gap: 10%;
+        justify-content: center;
+        font-family: Arial;
+        color: white;
+}
+    body {
+        background-color: black;
+}
+</style>
+</head>
+<body>
+    <div class="button">
+    <h1 style="text-align:center;">Willkommen auf unserer Game-Webseite</h1>
+    <p>Bitte wählen Sie ein Spiel:</p>
+    <button onclick="window.location.href='http://${HOSTIP}:8082';">Play Pong</button>
+    <button onclick="window.location.href='http://${HOSTIP}:8081';">Play Snake</button>
+    <button onclick="window.location.href='http://${HOSTIP}:8083';">Play Tic Tac Toe</button>
+    </div>
+</body>
+</html>
