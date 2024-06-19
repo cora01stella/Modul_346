@@ -38,7 +38,7 @@
         az: "{{ availability_zone }}"
         region: "{{ region }}"
         state: present
-        map_public: yes
+        map_public: no
       register: subnet
 
     - name: Create Internet Gateway
@@ -68,11 +68,115 @@
       set_fact:
         main_route_table_id: "{{ new_route_table.route_table.id }}"
 
+
+    - name: Create Security Group
+      amazon.aws.ec2_group:
+        name: "my_security_group"
+        description: "Security group for ECS and EC2"
+        vpc_id: "{{ vpc.vpc.id }}"
+        region: "{{ region }}"
+        rules:
+          - proto: tcp
+            from_port: 22
+            to_port: 22
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 8080
+            to_port: 8080
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 8081
+            to_port: 8081
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 8082
+            to_port: 8082
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 8083
+            to_port: 8083
+            cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 80
+            to_port: 80
+            cidr_ip: 0.0.0.0/0
+      register: security_group
+
+    - name: Create IAM Role for EC2 and ECS
+      amazon.aws.iam_role:
+        name: EC2ECSRole
+        assume_role_policy_document: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "ec2.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              },
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "ecs.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          }
+      register: iam_role
+
+    - name: Create IAM Policy for EC2 and ECS
+      amazon.aws.iam_policy:
+        policy_name: EC2AndECSPolicy
+        iam_type: policy
+        iam_name: "{{ iam_role.role.name }}"
+        state: present
+        policy_document: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "ec2:DescribeInstances",
+                  "ec2:StartInstances",
+                  "ec2:StopInstances",
+                  "ec2:TerminateInstances",
+                  "ec2:RebootInstances",
+                  "ecs:DescribeClusters",
+                  "ecs:DescribeServices",
+                  "ecs:DescribeTaskDefinition",
+                  "ecs:DescribeTasks",
+                  "ecs:ListClusters",
+                  "ecs:ListContainerInstances",
+                  "ecs:ListServices",
+                  "ecs:ListTaskDefinitionFamilies",
+                  "ecs:ListTaskDefinitions",
+                  "ecs:ListTasks"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+      register: ec2_ecs_policy
+
+    - name: Attach IAM Policy to IAM Role
+      amazon.aws.iam_policy:
+        iam_type: role
+        iam_name: "{{ iam_role.role.name }}"
+        policy_name: EC2AndECSPolicy
+        policy_document: "{{ ec2_ecs_policy.policy }}"
+        state: present
+
+
     - name: Create ECS cluster
       community.aws.ecs_cluster:
         name: "{{ ecs_cluster_name }}"
         state: present
       register: ecs_cluster
+
 
     - name: Launch EC2 Instance with ECS agent
       amazon.aws.ec2_instance:
@@ -93,13 +197,6 @@
           assign_public_ip: yes
         wait: yes
       register: ec2_instance
-
-    - name: Debug EC2 Instance
-      debug:
-        msg:
-          - "EC2 Instance ID: {{ ec2_instance.instance_ids }}"
-          - "Public IP: {{ ec2_instance.public_ip_address }}"
-          - "Private IP: {{ ec2_instance.private_ip_address }}"
 
     - name: Wait for the EC2 instance to be running
       amazon.aws.ec2_instance_info:
