@@ -12,9 +12,12 @@
     subnet_cidr: "192.168.88.0/28"
     availability_zone: "us-east-1a"
     ecs_cluster_name: "M_346_ECS_cluster"
-    service_name: "spiele-container"
-    task_definition_name: "erstell-task"
-    container_ports: [8080, 8081, 8082, 8083, 80]
+    service_name: "snake"
+    service_name2: "pong"
+    service_name3: "tictactoe"
+    task_definition_name: "erstell-task-snake"
+    task_definition_name2: "erstell-task-pong"
+    task_definition_name3: "erstell-task-tictactoe"
     image_snake: "ghcr.io/sean-mcguinness/m169-nginx-snake:v1"
     image_pong: "ghcr.io/sean-mcguinness/m169-nginx-pong:v1"
     image_tictactoe: "ghcr.io/sean-mcguinness/m169-nginx-tictactoe:v1"
@@ -100,61 +103,25 @@
             from_port: 80
             to_port: 80
             cidr_ip: 0.0.0.0/0
+          - proto: tcp
+            from_port: 443
+            to_port: 443
+            cidr_ip: 0.0.0.0/0
       register: security_group
 
-    - name: Create IAM Role for EC2 and ECS
-      amazon.aws.iam_role:
-        name: EC2ECSRole
-        assume_role_policy_document: |
-          {
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Principal": {
-                  "Service": "ec2.amazonaws.com"
-                },
-                "Action": "sts:AssumeRole"
-              },
-              {
-                "Effect": "Allow",
-                "Principal": {
-                  "Service": "ecs.amazonaws.com"
-                },
-                "Action": "sts:AssumeRole"
-              }
-            ]
-          }
-      register: iam_role
-
     - name: Create IAM Policy for EC2 and ECS
-      amazon.aws.iam_policy:
+      community.aws.iam_managed_policy:
         policy_name: EC2AndECSPolicy
-        iam_type: policy
-        iam_name: "{{ iam_role.role.name }}"
         state: present
-        policy_document: |
+        policy: |
           {
             "Version": "2012-10-17",
             "Statement": [
               {
                 "Effect": "Allow",
                 "Action": [
-                  "ec2:DescribeInstances",
-                  "ec2:StartInstances",
-                  "ec2:StopInstances",
-                  "ec2:TerminateInstances",
-                  "ec2:RebootInstances",
-                  "ecs:DescribeClusters",
-                  "ecs:DescribeServices",
-                  "ecs:DescribeTaskDefinition",
-                  "ecs:DescribeTasks",
-                  "ecs:ListClusters",
-                  "ecs:ListContainerInstances",
-                  "ecs:ListServices",
-                  "ecs:ListTaskDefinitionFamilies",
-                  "ecs:ListTaskDefinitions",
-                  "ecs:ListTasks"
+                  "ec2:*",
+                  "ecs:*"
                 ],
                 "Resource": "*"
               }
@@ -162,21 +129,50 @@
           }
       register: ec2_ecs_policy
 
-    - name: Attach IAM Policy to IAM Role
-      amazon.aws.iam_policy:
-        iam_type: role
-        iam_name: "{{ iam_role.role.name }}"
-        policy_name: EC2AndECSPolicy
-        policy_document: "{{ ec2_ecs_policy.policy }}"
-        state: present
+    - name: Debug IAM Policy Creation
+      debug:
+        var: ec2_ecs_policy
 
+    - name: Create IAM Role for EC2 and ECS
+      community.aws.iam_role:
+        name: EC2ECSRole
+        create_instance_profile: true
+        managed_policies: "{{ ec2_ecs_policy.policy.policy_name }}"
+        assume_role_policy_document: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": "sts:AssumeRole",
+                "Principal": {
+                  "Service": "ec2.amazonaws.com"
+                }
+              }
+            ]
+          }
+      register: iam_role 
+
+    - name: Debug IAM Role Output
+      debug:
+        var: iam_role
+
+#    - name: Create IAM Instance Profile
+#      amazon.aws.iam_instance_profile:
+#        name: InstanceProfile
+#        role: "{{ iam_role.role_name }}"
+#        state: present
+#      register: instance_profile
+    
+#    - name: Debug IAM Instance Profile
+#      debug:
+#        var: instance_profile
 
     - name: Create ECS cluster
       community.aws.ecs_cluster:
         name: "{{ ecs_cluster_name }}"
         state: present
       register: ecs_cluster
-
 
     - name: Launch EC2 Instance with ECS agent
       amazon.aws.ec2_instance:
@@ -193,16 +189,59 @@
           yum install -y ecs-init
           systemctl enable --now ecs
         network:
-          subnets: ["{{ subnet.subnet.id }}"]
+          subnets: "{{ subnet.subnet.id }}"
           assign_public_ip: yes
+        security_groups: "{{ security_group.group_id }}"
+#        iam_instance_profile:
+#          arn: "arn:aws:iam::058264434567:instance-profile/EC2ECSRole"
         wait: yes
       register: ec2_instance
 
-    - name: Wait for the EC2 instance to be running
-      amazon.aws.ec2_instance_info:
+    - name: Launch EC2 Instance with ECS agent
+      amazon.aws.ec2_instance:
+        name: "M_346_ECS_Instance_2"
+        instance_type: "{{ ec2_instance_type }}"
+        image_id: "{{ ami }}"
+        vpc_subnet_id: "{{ subnet.subnet.id }}"
         region: "{{ region }}"
-        instance_ids: "{{ ec2_instance.instance_ids }}"
-      register: ec2_info
+        state: present
+        user_data: |
+          #!/bin/bash
+          echo ECS_CLUSTER={{ ecs_cluster_name }} >> /etc/ecs/ecs.config
+          yum install -y aws-cli
+          yum install -y ecs-init
+          systemctl enable --now ecs
+        network:
+          subnets: "{{ subnet.subnet.id }}"
+          assign_public_ip: yes
+        security_groups: "{{ security_group.group_id }}"
+#        iam_instance_profile:
+#          arn: "arn:aws:iam::058264434567:instance-profile/EC2ECSRole"
+        wait: yes
+      register: ec2_instance2
+
+    - name: Launch EC2 Instance with ECS agent
+      amazon.aws.ec2_instance:
+        name: "M_346_ECS_Instance_3"
+        instance_type: "{{ ec2_instance_type }}"
+        image_id: "{{ ami }}"
+        vpc_subnet_id: "{{ subnet.subnet.id }}"
+        region: "{{ region }}"
+        state: present
+        user_data: |
+          #!/bin/bash
+          echo ECS_CLUSTER={{ ecs_cluster_name }} >> /etc/ecs/ecs.config
+          yum install -y aws-cli
+          yum install -y ecs-init
+          systemctl enable --now ecs
+        network:
+          subnets: "{{ subnet.subnet.id }}"
+          assign_public_ip: yes
+        security_groups: "{{ security_group.group_id }}"
+#        iam_instance_profile:
+#          arn: "arn:aws:iam::058264434567:instance-profile/EC2ECSRole"
+        wait: yes
+      register: ec2_instance3
 
     - name: Wait for instance to join the ECS cluster
       shell: |
@@ -218,7 +257,7 @@
       debug:
         msg: "ECS Container Instances: {{ ecs_container_instances.stdout }}"
 
-    - name: Create ECS task definition
+    - name: Create ECS task definition1
       community.aws.ecs_taskdefinition:
         family: "{{ task_definition_name }}"
         network_mode: awsvpc
@@ -226,46 +265,12 @@
           - name: "snake"
             image: "{{ image_snake }}"
             essential: true
-            memory: 16
+            memory: 160
             cpu: 4
             portMappings:
               - containerPort: 8081
-            logConfiguration:
-              logDriver: "awslogs"
-              options:
-                awslogs-group: "/ecs/{{ task_definition_name }}"
-                awslogs-region: "{{ region }}"
-                awslogs-stream-prefix: "ecs"
-          - name: "pong"
-            image: "{{ image_pong }}"
-            essential: true
-            memory: 16
-            cpu: 4
-            portMappings:
-              - containerPort: 8082
-            logConfiguration:
-              logDriver: "awslogs"
-              options:
-                awslogs-group: "/ecs/{{ task_definition_name }}"
-                awslogs-region: "{{ region }}"
-                awslogs-stream-prefix: "ecs"
-          - name: "tictactoe"
-            image: "{{ image_tictactoe }}"
-            essential: true
-            memory: 16
-            cpu: 4
-            portMappings:
-              - containerPort: 8083
-            logConfiguration:
-              logDriver: "awslogs"
-              options:
-                awslogs-group: "/ecs/{{ task_definition_name }}"
-                awslogs-region: "{{ region }}"
-                awslogs-stream-prefix: "ecs"
-        cpu: "256"
-        memory: "512"
+                hostPort: 8081
         state: present
-      register: task_definition
 
     - name: Create ECS service
       community.aws.ecs_service:
@@ -277,5 +282,67 @@
           subnets:
             - "{{ subnet.subnet.id }}"
           assign_public_ip: false
+          security_groups:
+            - "{{ security_group.group_id }}"
+        state: present
+      register: ecs_service
+    
+    - name: Create ECS task definition2
+      community.aws.ecs_taskdefinition:
+        family: "{{ task_definition_name2 }}"
+        network_mode: awsvpc
+        containers:
+         - name: "pong"
+           image: "{{ image_pong }}"
+           essential: true
+           memory: 160
+           cpu: 4
+           portMappings:
+             - containerPort: 8082
+               hostPort: 8082
+        state: present  
+
+    - name: Create ECS service
+      community.aws.ecs_service:
+        cluster: "{{ ecs_cluster_name }}"
+        name: "{{ service_name2 }}"
+        task_definition: "{{ task_definition_name2 }}"
+        desired_count: 1
+        network_configuration:
+          subnets:
+            - "{{ subnet.subnet.id }}"
+          assign_public_ip: false
+          security_groups:
+            - "{{ security_group.group_id }}"
+        state: present
+      register: ecs_service      
+  
+    - name: Create ECS task definition3
+      community.aws.ecs_taskdefinition:
+        family: "{{ task_definition_name3 }}"
+        network_mode: awsvpc
+        containers:
+          - name: "tictactoe"
+            image: "{{ image_tictactoe }}"
+            essential: true
+            memory: 160
+            cpu: 4
+            portMappings:
+              - containerPort: 8083
+                hostPort: 8083
+        state: present
+
+    - name: Create ECS service
+      community.aws.ecs_service:
+        cluster: "{{ ecs_cluster_name }}"
+        name: "{{ service_name3 }}"
+        task_definition: "{{ task_definition_name3 }}"
+        desired_count: 1
+        network_configuration:
+          subnets:
+            - "{{ subnet.subnet.id }}"
+          assign_public_ip: false
+          security_groups:
+            - "{{ security_group.group_id }}"
         state: present
       register: ecs_service
