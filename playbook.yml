@@ -232,7 +232,7 @@
             cpu: 1
             portMappings:
               - containerPort: 8081
-                hostPort: 8081
+                hostPort: 8080
         state: present
 
     - name: Erstellung ECS Service 1
@@ -266,7 +266,7 @@
            cpu: 1
            portMappings:
              - containerPort: 8082
-               hostPort: 8082
+               hostPort: 8080
         state: present  
 
     - name: Erstellung ECS Service 2
@@ -300,7 +300,7 @@
             cpu: 1
             portMappings:
               - containerPort: 8083
-                hostPort: 8083
+                hostPort: 8080
         state: present
       register: taskdefinition3
 
@@ -345,6 +345,10 @@
               ]
           }        
         versioning: true
+
+    - name: Run update script
+      script: replace-ips.sh
+      delegate_to: localhost
 
     - name: Hochladen index.html Datei
       amazon.aws.s3_object:
