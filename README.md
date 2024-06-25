@@ -40,7 +40,7 @@ Hier ist eine Anleitung, wie der Access Key generiert wird:
 ![image](https://github.com/cora01stella/Modul_346/assets/170628330/6256bece-8677-4019-bd92-3493d6f17c5a)
 
 3. Scrolle zu Zugriffsschlüssel
-\
+
 5. Gehe auf Zugriffschlüssel erstellen
 ![image](https://github.com/cora01stella/Modul_346/assets/170628330/7bc14597-c1f9-457d-b587-4ba819ede528)
 
@@ -48,7 +48,7 @@ Hier ist eine Anleitung, wie der Access Key generiert wird:
 ![image](https://github.com/cora01stella/Modul_346/assets/170628330/9fa4b736-078e-4d32-962a-08270e1dee5f)
 
 7. Zugriffschlüssel und geheimer Zugriffschlüssel in die "creds_root.yml" Datei kopieren
-\
+
 ![image](https://github.com/cora01stella/Modul_346/assets/170628330/1ed347cb-740f-4e8c-9a4d-5bdaa1fb0fb7)
 ![image](https://github.com/cora01stella/Modul_346/assets/170628330/07681ef0-5e37-495c-92ca-4d01c57b6804)
 
