@@ -4,7 +4,7 @@
 1. Gehe auf die Amazon Konsole und starte die Amazon CLI (cloudshell)
 2. Gebe dann folgenden Befehl ein, damit das Git Repo auf AWS heruntergeladen wird:
 ```
-git clone "GIT REPO"
+git clone https://github.com/cora01stella/Modul_346.git
 ```
 3. Wechsle in das Git Verzeichnis:
 ```
