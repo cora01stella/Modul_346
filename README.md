@@ -57,5 +57,22 @@ Wenn die Vorbereitung abgechlossen ist und der Access Key generiert wurde, kann 
 ```
 ansible-playbook playbook.yml
 ```
+## Webseite öffnen
+Hier ist eine kurze Anleitung, wie die Webseite über AWS Konsole geöffnet werden kann.
 
+1. Öffne die Amazon AWS Konsole
+2. Gehe auf S3
+![image](https://github.com/cora01stella/Modul_346/assets/170628330/a2655b6e-227e-42b7-9e4f-5f6088b47562)
+
+3. Gehe auf Buckets
+![image](https://github.com/cora01stella/Modul_346/assets/170628330/a1af7075-4481-427f-8ce4-d7a1e91d8f27)
+
+4. Gehe auf den erstellten Bucket
+![image](https://github.com/cora01stella/Modul_346/assets/170628330/bb7cb7d4-9009-439a-bdf6-37135b0317bf)
+
+5. Setze bei der "index.html" den Haken und klicke auf öffnen
+![image](https://github.com/cora01stella/Modul_346/assets/170628330/37bf633a-eb6a-459c-9798-be0719965aec)
+
+Den offiziellen Link findest du indem du auf die "index.html" Datei darauf klickst.
+![image](https://github.com/cora01stella/Modul_346/assets/170628330/5349c25c-d481-4789-868b-4009f0eea0b9)
 
