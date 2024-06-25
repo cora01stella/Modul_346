@@ -65,6 +65,7 @@ Hier ist eine kurze Anleitung, wie die Webseite über AWS Konsole geöffnet werd
 ![image](https://github.com/cora01stella/Modul_346/assets/170628330/a2655b6e-227e-42b7-9e4f-5f6088b47562)
 
 3. Gehe auf Buckets
+   
 ![image](https://github.com/cora01stella/Modul_346/assets/170628330/a1af7075-4481-427f-8ce4-d7a1e91d8f27)
 
 4. Gehe auf den erstellten Bucket
